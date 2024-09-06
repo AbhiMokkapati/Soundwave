@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="homepage.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Raleway:wght@500&display=swap" rel="stylesheet">
+    <title>Playlists</title>
+</head>
+
+<body>
+
+<div id="header">
+    <h1>Playlists</h1>
+</div>
+
+<div id="navbar">
+    <ul>
+        <li><a href="homepage.html">Home</a></li>
+        <li><a href="discover.html">Discover Music</a></li>
+        <li><a href="playlists.html">Playlists</a></li>
+        <li><a href="favorites.html">My Favorites</a></li>
+        <li><a href="login.html">Log Out</a></li>
+    </ul>
+</div>
+
+<div id="container">
+    <div id="left">
+
+        <div id="input-title">
+            <h2>Song Title</h2>
+            <input id="input-titles" type="text">
+        </div>
+    
+        <div id="input-artist">
+            <h2>Artist Name</h2>
+            <input id="input-artists" type="text">
+        </div>
+    
+        <div id="input-genre">
+            <h2>Genre</h2>
+            <input id="input-genres" type="text">
+        </div>
+    
+        <div id="input-releaseyear">
+            <h2>Release Year</h2>
+            <input id="input-releaseyears" type="text">
+        </div>
+    
+        <button id="submit-post-request">Submit</button>
+
+    </div>
+
+    <div id="right">
+        <h1>Saved Songs</h1>
+        <button id="submit-get-request">Submit</button>
+        <ul id="list"></ul>
+    </div>
+
+</div>
+
+<script src="scripts-playlists.js"></script>
+</body>
+
+</html>

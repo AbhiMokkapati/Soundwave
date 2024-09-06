@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="discover.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Raleway:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <title>Discover</title>
+</head>
+
+<body>
+
+<div id="header">
+    <h1>Discover Music</h1>
+</div>
+
+<div id="navbar">
+    <ul>
+        <li><a href="homepage.html">Home</a></li>
+        <li><a href="discover.html">Discover Music</a></li>
+        <li><a href="playlists.html">Playlists</a></li>
+        <li><a href="favorites.html">My Favorites</a></li>
+        <li><a href="login.html">Log Out</a></li>
+    </ul>
+</div>
+
+<div id="container">
+    <div id="left">
+        <form id="genreForm">
+            <label for="language">Select a Genre:</label>
+            <select name="genre" id="genre">
+            <option value="Pop">Pop</option>
+            <option value="Rock">Rock</option>
+            <option value="Jazz">Jazz</option>
+            <option value="Indie/Alternative">Indie/Alternative</option>
+            <option value="Bollywood">Bollywood</option>
+            <option value="Telugu">Telugu</option>
+            <option value="Spanish">Spanish</option>
+            <option value="KPOP">KPOP</option>
+            <option value="Rap">Rap</option>
+            </select>
+
+            <input type="submit" value="Submit">
+        </form>
+
+        <ul id="artistList"></ul>
+
+    </div>
+
+    <div id="right">
+        <div class="player">
+            <!-- Define the section for displaying details -->
+            <div class="details">
+              <div class="now-playing">PLAYING x OF y</div>
+              <div class="track-name">Track Name</div>
+              <div class="track-artist">Track Artist</div>
+            </div>
+         
+            <!-- Define the section for displaying track buttons -->
+            <div class="buttons">
+              <div class="prev-track" onclick="prevTrack()">
+                <i class="fa fa-step-backward fa-2x"></i>
+              </div>
+              <div class="playpause-track" onclick="playpauseTrack()">
+                <i class="fa fa-play-circle fa-5x"></i>
+              </div>
+              <div class="next-track" onclick="nextTrack()">
+                <i class="fa fa-step-forward fa-2x"></i>
+              </div>
+            </div>
+         
+            <!-- Define the section for displaying the seek slider-->
+            <div class="slider_container">
+              <div class="current-time">00:00</div>
+              <input type="range" min="1" max="100"
+                value="0" class="seek_slider" onchange="seekTo()">
+              <div class="total-duration">00:00</div>
+            </div>
+         
+            <!-- Define the section for displaying the volume slider-->
+            <div class="slider_container">
+              <i class="fa fa-volume-down"></i>
+              <input type="range" min="1" max="100"
+                value="99" class="volume_slider" onchange="setVolume()">
+              <i class="fa fa-volume-up"></i>
+            </div>
+          </div>
+    </div>
+</div>
+
+<script src="discover.js"></script>
+</body>
+
+</html>

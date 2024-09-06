@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Raleway:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="register.css">
+  <title>Register</title>
+</head>
+
+<body>
+
+  <div class="container">
+    <h2>Register</h2>
+    <form id="register-form">
+      <div class="label-container">
+        <label for="username">Username:</label>
+        <input type="text" id="register-username" name="username" placeholder="Enter your username">
+      </div>
+      <div class="label-container">
+        <label for="password">Password:</label>
+        <input type="password" id="register-password" name="password" placeholder="Enter your password">
+      </div>
+      <button type="submit">Register</button>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const registerForm = document.getElementById('register-form');
+  
+      registerForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        try {
+          const response = await fetch('http://localhost:3000/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+          });
+          const result = await response.json();
+          
+          // Display a success message
+          alert(result.message);
+  
+          // Redirect to homepage upon successful registration
+          if (result.success) {
+            window.location.href = "homepage.html";
+          }
+        } catch (error) {
+          console.error('Error registering:', error);
+          alert('An error occurred. Please try again later.');
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans&family=Raleway:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="login.css">
+  <title>Login</title>
+</head>
+
+<body>
+  <div class="container">
+    <h2>Login</h2>
+
+    <form id="login-form">
+
+      <div class="label-container">
+        <label for="username">Username:</label>
+        <input type="text" id="login-username" name="username" placeholder="Enter your username">
+      </div>
+
+      <div class="label-container">
+        <label for="password">Password:</label>
+        <input type="password" id="login-password" name="password" placeholder="Enter your password">
+      </div>
+
+      <button type="submit">Login</button>
+
+    </form>
+    
+    <div class="button-container">
+      <a id="redirect" href="register.html">
+        <button type="button" class="signup-button">Sign Up</button>
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginForm = document.getElementById('login-form');
+
+      loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        try {
+          const response = await fetch('http://localhost:3000/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+          });
+          const result = await response.json();
+          // Check if the login was successful
+          if (result.success) {
+            alert(result.message);
+            // Redirect to homepage upon successful login
+            window.location.href = "homepage.html";
+          } else {
+            alert(result.message);
+          }
+        } catch (error) {
+          console.error('Error logging in:', error);
+          alert('An error occurred. Please try again later.');
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
