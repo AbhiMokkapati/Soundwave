@@ -1,0 +1,485 @@
+<title>Soundwave</title>
+<link rel="stylesheet" href="/styles.css" />
+
+<div id="toast-stack"></div>
+
+<div id="splash">
+  <div class="splash-deck">
+    <svg class="splash-vinyl vinyl-svg" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="48" fill="#05070d" stroke="var(--border)" stroke-width="1"/>
+      <circle cx="50" cy="50" r="42" fill="none" stroke="var(--groove)" stroke-width="6"/>
+      <circle cx="50" cy="50" r="34" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="0.6"/>
+      <circle cx="50" cy="50" r="30" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="0.6"/>
+      <circle cx="50" cy="50" r="26" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="0.6"/>
+      <circle cx="50" cy="50" r="22" fill="var(--accent)"/>
+      <circle cx="50" cy="50" r="22" fill="none" stroke="var(--accent-hover)" stroke-width="0.75"/>
+      <circle cx="50" cy="50" r="2.5" fill="var(--bg)"/>
+    </svg>
+    <svg class="splash-tonearm" viewBox="0 0 90 90">
+      <circle cx="78" cy="12" r="6" fill="var(--text-faint)"/>
+      <line x1="78" y1="12" x2="30" y2="66" stroke="var(--text-dim)" stroke-width="3" stroke-linecap="round"/>
+      <rect x="18" y="60" width="18" height="11" rx="2" transform="rotate(45 27 65)" fill="var(--accent)"/>
+    </svg>
+  </div>
+  <div class="splash-word">SOUND<span>WAVE</span></div>
+  <div class="splash-hint">click the deck, or wait for the needle to drop</div>
+</div>
+
+<div class="app-shell">
+  <nav class="sidebar">
+    <div class="wordmark">
+      <svg class="wordmark-vinyl" id="nav-vinyl" viewBox="0 0 24 24">
+        <rect x="1" y="9" width="4" height="15" rx="1.5" fill="currentColor"/>
+        <rect x="7.5" y="4" width="4" height="20" rx="1.5" fill="currentColor"/>
+        <rect x="14" y="11" width="4" height="13" rx="1.5" fill="currentColor"/>
+        <rect x="20.5" y="6" width="4" height="18" rx="1.5" fill="currentColor"/>
+      </svg>
+      SOUND<span>WAVE</span>
+    </div>
+
+    <div class="nav-list">
+      <button class="nav-item active" data-view="home">
+        <span class="nav-jack"></span>
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V10M10 21V3M16 21V14M22 21V7"/></svg></span>
+        Home
+      </button>
+      <button class="nav-item" data-view="library">
+        <span class="nav-jack" data-status="pending"></span>
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/></svg></span>
+        Library
+      </button>
+      <button class="nav-item" data-view="analyze">
+        <span class="nav-jack" data-status="pending"></span>
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 3-10 2 3h4"/></svg></span>
+        Analyze &amp; Cues
+      </button>
+      <button class="nav-item" data-view="similarity">
+        <span class="nav-jack" data-status="pending"></span>
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><circle cx="12" cy="17" r="3"/></svg></span>
+        Similarity Playlists
+      </button>
+      <button class="nav-item" data-view="playlists">
+        <span class="nav-jack" data-status="pending"></span>
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h11M4 12h11M4 18h6"/><circle cx="19" cy="16" r="2.5"/><path d="M21.5 16V6"/></svg></span>
+        Playlists
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <span>soundwave · local</span>
+      <span class="sidebar-eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ================= HOME ================= -->
+    <section class="view active" id="view-home">
+      <div class="view-header">
+        <div>
+          <h1>Signal Chain</h1>
+          <div class="view-subtitle">Your DJ-prep pipeline, start to export. Jump to any stage — Soundwave remembers where you left off.</div>
+        </div>
+        <div class="home-eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+      </div>
+
+      <div class="pipeline" id="pipeline">
+        <button class="pipeline-step" data-view="library">
+          <div class="pipeline-step-head">
+            <span class="pipeline-step-num">01</span>
+            <svg class="pipeline-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+          </div>
+          <h3>Library</h3>
+          <p class="pipeline-step-desc">Browse a folder, tidy tags, dedupe and sort your collection.</p>
+          <div class="pipeline-step-status" id="pipeline-status-library">Not set up yet</div>
+          <div class="pipeline-step-cta">Browse a folder &rarr;</div>
+        </button>
+
+        <div class="pipeline-cable"></div>
+
+        <button class="pipeline-step" data-view="analyze">
+          <div class="pipeline-step-head">
+            <span class="pipeline-step-num">02</span>
+            <svg class="pipeline-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 3-10 2 3h4"/></svg>
+          </div>
+          <h3>Analyze &amp; Cues</h3>
+          <p class="pipeline-step-desc">Detect hot cues on the waveform, sync lyrics, save to XML.</p>
+          <div class="pipeline-step-status" id="pipeline-status-analyze">No tracks analyzed yet</div>
+          <div class="pipeline-step-cta">Load a track &rarr;</div>
+        </button>
+
+        <div class="pipeline-cable"></div>
+
+        <button class="pipeline-step" data-view="similarity">
+          <div class="pipeline-step-head">
+            <span class="pipeline-step-num">03</span>
+            <svg class="pipeline-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><circle cx="12" cy="17" r="3"/></svg>
+          </div>
+          <h3>Similarity</h3>
+          <p class="pipeline-step-desc">Cluster by sound, or order a whole folder into one smooth set.</p>
+          <div class="pipeline-step-status" id="pipeline-status-similarity">Not run yet</div>
+          <div class="pipeline-step-cta">Build playlists &rarr;</div>
+        </button>
+
+        <div class="pipeline-cable"></div>
+
+        <button class="pipeline-step" data-view="playlists">
+          <div class="pipeline-step-head">
+            <span class="pipeline-step-num">04</span>
+            <svg class="pipeline-step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h11M4 12h11M4 18h6"/><circle cx="19" cy="16" r="2.5"/><path d="M21.5 16V6"/></svg>
+          </div>
+          <h3>Export &amp; Verify</h3>
+          <p class="pipeline-step-desc">Inspect the playlist tree and check what needs re-importing.</p>
+          <div class="pipeline-step-status" id="pipeline-status-playlists">Not checked yet</div>
+          <div class="pipeline-step-cta">Open XML &rarr;</div>
+        </button>
+      </div>
+
+      <div class="panel">
+        <h2>Quick status</h2>
+        <div class="stat-row" id="home-stats">
+          <div class="stat-chip"><span class="stat-value" id="stat-library-count">—</span><span class="stat-label">Tracks in library</span></div>
+          <div class="stat-chip"><span class="stat-value" id="stat-analyzed-count">0</span><span class="stat-label">Analyzed this session</span></div>
+          <div class="stat-chip"><span class="stat-value" id="stat-similarity-count">—</span><span class="stat-label">Similarity playlists</span></div>
+          <div class="stat-chip"><span class="stat-value" id="stat-output-path">—</span><span class="stat-label">Last output XML</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= LIBRARY ================= -->
+    <section class="view" id="view-library">
+      <div class="view-header">
+        <div>
+          <h1>Library</h1>
+          <div class="view-subtitle">Browse your music folder and run tidy operations — no flags required.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Browse</h2>
+        <div class="field-row">
+          <div class="field path-input">
+            <label>Folder path</label>
+            <input type="text" id="lib-path" placeholder="C:\Users\you\Music\DJ Tracks" />
+          </div>
+          <button class="btn icon ghost" id="lib-pick-folder-btn" style="align-self:flex-end;" title="Choose a folder…">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+          </button>
+          <button class="btn primary" id="lib-browse-btn" style="align-self:flex-end;">Browse</button>
+        </div>
+        <div class="crumb" id="lib-crumb" style="margin-top:14px;"></div>
+        <div id="lib-table-wrap"><div class="empty-state">Enter a folder path above and click Browse.</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Batch-analyze cues for this folder</h2>
+        <div class="view-subtitle" style="margin-bottom:12px;">Runs hot-cue detection on every audio file in the folder above and writes them all into one Rekordbox XML — no need to open each track individually.</div>
+        <div class="field-row">
+          <div class="field path-input">
+            <label>Output XML</label>
+            <input type="text" id="batch-output-xml" value="soundwave_output.xml" />
+          </div>
+          <label class="checkbox-row" style="align-self:flex-end;"><input type="checkbox" id="batch-use-demucs" /> Vocal detection (slower)</label>
+          <label class="checkbox-row" style="align-self:flex-end;"><input type="checkbox" id="batch-recompute" /> Recompute (ignore cache)</label>
+          <button class="btn primary" id="batch-run-btn" style="align-self:flex-end;">Analyze all tracks</button>
+        </div>
+        <div class="progress-bar" id="batch-progress-wrap" style="display:none;"><div class="progress-bar-fill" id="batch-progress-fill"></div></div>
+        <div class="log-console" id="batch-log" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Tidy this folder</h2>
+        <div class="toggle-card-grid">
+          <label class="toggle-card">
+            <input type="checkbox" id="op-clear-genre-toggle" />
+            <span class="toggle-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/></svg></span>
+            <span><span class="toggle-card-label">Clear bogus genre tags</span><span class="toggle-card-sub">Reset folder-named genres</span></span>
+          </label>
+          <label class="toggle-card">
+            <input type="checkbox" id="op-fill-tags" />
+            <span class="toggle-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></span>
+            <span><span class="toggle-card-label">Fill missing tags</span><span class="toggle-card-sub">Title, artist, genre</span></span>
+          </label>
+          <label class="toggle-card">
+            <input type="checkbox" id="op-lookup" />
+            <span class="toggle-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+            <span><span class="toggle-card-label">AcoustID lookup</span><span class="toggle-card-sub">Match against MusicBrainz</span></span>
+          </label>
+          <label class="toggle-card">
+            <input type="checkbox" id="op-dedupe" />
+            <span class="toggle-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="12" height="12" rx="2"/><rect x="9" y="9" width="12" height="12" rx="2"/></svg></span>
+            <span><span class="toggle-card-label">Deduplicate</span><span class="toggle-card-sub">By matching title</span></span>
+          </label>
+          <label class="toggle-card">
+            <input type="checkbox" id="op-sort-genres" />
+            <span class="toggle-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h11M4 12h11M4 18h6"/><circle cx="19" cy="16" r="2.5"/><path d="M21.5 16V6"/></svg></span>
+            <span><span class="toggle-card-label">Sort into genre folders</span><span class="toggle-card-sub">Moves files on disk</span></span>
+          </label>
+          <label class="toggle-card">
+            <input type="checkbox" id="op-rename" />
+            <span class="toggle-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a1 1 0 011-1h4M20 7V5a1 1 0 00-1-1h-4M4 17v2a1 1 0 001 1h4M20 17v2a1 1 0 01-1 1h-4"/><path d="M9 12h6"/></svg></span>
+            <span><span class="toggle-card-label">Rename to track title</span><span class="toggle-card-sub">Renames files on disk</span></span>
+          </label>
+        </div>
+
+        <div id="op-clear-genre-detail" style="display:none; margin-top:6px;">
+          <div class="field checkbox-row sub" style="flex-direction:column; align-items:flex-start;">
+            <label style="text-transform:uppercase; font-size:11px; letter-spacing:.04em; color:var(--text-faint);">Folders to clear (comma-separated)</label>
+            <input type="text" id="clear-genre-folders" placeholder="Touse, Pool Party, Partyyyy" style="width:100%; margin-top:4px;" />
+          </div>
+        </div>
+
+        <div id="op-fill-tags-detail" style="display:none;">
+          <label class="checkbox-row sub"><input type="checkbox" id="op-fill-bpm" /> Also detect BPM (slower)</label>
+        </div>
+
+        <div id="op-lookup-detail" style="display:none; margin-top:6px;">
+          <div class="field-row sub" style="margin-left:22px;">
+            <div class="field">
+              <label>AcoustID API key</label>
+              <input type="password" id="acoustid-key" placeholder="paste key" />
+            </div>
+            <label class="checkbox-row" style="align-self:flex-end;"><input type="checkbox" id="op-overwrite" /> Overwrite existing tags</label>
+            <label class="checkbox-row" style="align-self:flex-end;"><input type="checkbox" id="op-no-art" /> Skip album art</label>
+          </div>
+        </div>
+
+        <div class="field-row" style="margin-top:14px;">
+          <div class="field">
+            <label>Ignore folders (comma-separated)</label>
+            <input type="text" id="ignore-folders" placeholder="rekordbox, iTunes" />
+          </div>
+          <label class="checkbox-row" style="align-self:flex-end;"><input type="checkbox" id="op-dry-run" checked /> Dry run (preview only)</label>
+          <button class="btn primary" id="tidy-run-btn" style="align-self:flex-end;">Run</button>
+        </div>
+
+        <div class="log-console" id="tidy-log" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="flow-next" data-view="analyze">
+        <div>
+          <div class="flow-next-label">Next up</div>
+          <div class="flow-next-title">Analyze a track &amp; place hot cues</div>
+        </div>
+        <div class="flow-next-arrow">&rarr;</div>
+      </div>
+    </section>
+
+    <!-- ================= ANALYZE ================= -->
+    <section class="view" id="view-analyze">
+      <div class="view-header">
+        <div>
+          <h1>Analyze &amp; Cues</h1>
+          <div class="view-subtitle">Play a track, review detected hot cues, drag to correct them, and save to XML.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="field-row">
+          <div class="field path-input">
+            <label>Track path</label>
+            <input type="text" id="an-path" placeholder="Click a track in Library, or paste a path" />
+          </div>
+          <label class="checkbox-row" style="align-self:flex-end;"><input type="checkbox" id="an-use-demucs" /> Vocal detection (slower)</label>
+          <button class="btn primary" id="an-load-btn" style="align-self:flex-end;">Load</button>
+        </div>
+      </div>
+
+      <div class="panel" id="an-panel" style="display:none;">
+        <h2 id="an-track-title">—</h2>
+        <div class="cue-legend" id="an-cue-legend"></div>
+
+        <div class="cue-toolbar">
+          <select id="new-cue-label">
+            <option>INTRO</option>
+            <option>DROP</option>
+            <option>BUILD</option>
+            <option>BREAK</option>
+            <option>VOCAL</option>
+            <option>OUTRO32</option>
+            <option>OUTRO16</option>
+            <option value="__custom">Custom label…</option>
+          </select>
+          <input type="text" id="new-cue-custom-label" placeholder="Label" style="display:none; width:110px;" />
+          <input type="color" id="new-cue-color" value="#ff6400" style="display:none; width:44px; padding:2px; height:30px;" />
+          <button class="btn" id="add-cue-btn" title="Adds a cue at the current playhead position">+ Add cue at playhead</button>
+        </div>
+
+        <div class="analyze-layout">
+          <div>
+            <div class="waveform-wrap">
+              <canvas id="waveform-canvas"></canvas>
+              <div class="playhead" id="playhead"></div>
+              <div id="cue-markers"></div>
+            </div>
+            <div class="transport">
+              <button class="play-btn" id="an-play-btn">
+                <svg id="an-play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+              <div class="transport-time"><span id="an-time-cur">0:00</span> / <span id="an-time-total">0:00</span></div>
+              <div class="field-row" style="flex:1; justify-content:flex-end;">
+                <div class="field">
+                  <label>Output XML</label>
+                  <input type="text" id="an-output-xml" value="soundwave_output.xml" style="width:220px;" />
+                </div>
+                <button class="btn primary" id="an-save-cues-btn" style="align-self:flex-end;">Save Cues</button>
+              </div>
+            </div>
+            <div id="an-save-status" style="margin-top:8px; font-size:12.5px; color:var(--text-dim);"></div>
+          </div>
+
+          <div>
+            <div class="field" style="margin-bottom:8px;">
+              <label>Lyrics (LRCLIB)</label>
+            </div>
+            <div class="lyrics-panel" id="lyrics-panel"><div class="empty-state">No lyrics loaded.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-next" data-view="similarity">
+        <div>
+          <div class="flow-next-label">Next up</div>
+          <div class="flow-next-title">Build similarity playlists</div>
+        </div>
+        <div class="flow-next-arrow">&rarr;</div>
+      </div>
+    </section>
+
+    <!-- ================= SIMILARITY ================= -->
+    <section class="view" id="view-similarity">
+      <div class="view-header">
+        <div>
+          <h1>Similarity Playlists</h1>
+          <div class="view-subtitle">Group tracks by how they sound, or order a whole folder into one smooth-flowing set.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="field-row">
+          <div class="field path-input">
+            <label>Folder or file path</label>
+            <input type="text" id="sim-path" placeholder="C:\Users\you\Music\DJ Tracks" />
+          </div>
+        </div>
+        <div class="field-row" style="margin-top:12px;">
+          <div class="field">
+            <label>Mode</label>
+            <select id="sim-mode">
+              <option value="both">Clusters + Path</option>
+              <option value="clusters">Clusters only</option>
+              <option value="path">Path only</option>
+            </select>
+          </div>
+          <div class="field">
+            <label># Clusters</label>
+            <input type="number" id="sim-clusters" value="6" min="1" max="30" style="width:80px;" />
+          </div>
+          <div class="field">
+            <label>Seconds analyzed / track</label>
+            <input type="number" id="sim-analysis-sec" value="60" min="10" max="240" style="width:100px;" />
+          </div>
+          <div class="field path-input">
+            <label>Output XML</label>
+            <input type="text" id="sim-output" value="soundwave_output.xml" />
+          </div>
+          <label class="checkbox-row" style="align-self:flex-end;"><input type="checkbox" id="sim-recompute" /> Recompute (ignore cache)</label>
+          <button class="btn primary" id="sim-run-btn" style="align-self:flex-end;">Run</button>
+        </div>
+
+        <div class="progress-bar" id="sim-progress-wrap" style="display:none;"><div class="progress-bar-fill" id="sim-progress-fill"></div></div>
+        <div class="log-console" id="sim-log" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="flow-next" data-view="playlists">
+        <div>
+          <div class="flow-next-label">Next up</div>
+          <div class="flow-next-title">Inspect &amp; export your playlists</div>
+        </div>
+        <div class="flow-next-arrow">&rarr;</div>
+      </div>
+    </section>
+
+    <!-- ================= PLAYLISTS ================= -->
+    <section class="view" id="view-playlists">
+      <div class="view-header">
+        <div>
+          <h1>Playlists</h1>
+          <div class="view-subtitle">Inspect the playlist tree inside a generated Rekordbox XML file.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="field-row">
+          <div class="field path-input">
+            <label>XML file path</label>
+            <input type="text" id="pl-path" placeholder="soundwave_output.xml" />
+          </div>
+          <button class="btn primary" id="pl-load-btn" style="align-self:flex-end;">Load</button>
+        </div>
+        <div class="playlist-tree" id="pl-tree" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Rekordbox re-import checklist</h2>
+        <div class="view-subtitle" style="margin-bottom:12px;">
+          Rekordbox won't update hot cues on tracks already in your library on a plain re-import.
+          Check here which of your Soundwave-analyzed tracks need the remove-then-reimport dance
+          and which will just import cleanly.
+        </div>
+
+        <div class="field-row">
+          <div class="field path-input">
+            <label>Your Soundwave output XML</label>
+            <input type="text" id="check-output-xml" placeholder="soundwave_output.xml" />
+          </div>
+        </div>
+
+        <div class="field-row" style="margin-top:10px;">
+          <label class="checkbox-row">
+            <input type="radio" name="check-source" id="check-source-live" checked style="width:auto;" />
+            Auto-detect from Rekordbox (reads its database directly, read-only)
+          </label>
+          <label class="checkbox-row">
+            <input type="radio" name="check-source" id="check-source-xml" style="width:auto;" />
+            Use an exported XML file
+          </label>
+        </div>
+        <div class="field-row" id="check-xml-field" style="display:none; margin-top:6px;">
+          <div class="field path-input">
+            <label>Rekordbox collection export XML</label>
+            <input type="text" id="check-rekordbox-xml" placeholder="C:\Users\you\Documents\rekordbox.xml" />
+          </div>
+        </div>
+        <div class="lyrics-note" id="check-xml-hint">Export via Rekordbox: File &rarr; Export Collection in xml format.</div>
+
+        <div class="field-row" style="margin-top:10px;">
+          <button class="btn primary" id="check-run-btn">Check</button>
+        </div>
+        <div id="check-results"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="mini-player" id="mini-player">
+  <svg class="mini-vinyl vinyl-svg" id="mini-vinyl" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="48" fill="#05070d" stroke="var(--border)" stroke-width="1.5"/>
+    <circle cx="50" cy="50" r="30" fill="none" stroke="#000" stroke-opacity=".4" stroke-width="1.5"/>
+    <circle cx="50" cy="50" r="22" fill="var(--accent)"/>
+    <circle cx="50" cy="50" r="3" fill="var(--bg)"/>
+  </svg>
+  <button class="mini-play-btn" id="mini-play-btn">
+    <svg id="mini-play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+  </button>
+  <div class="mini-player-info">
+    <div class="mini-player-title" id="mini-player-title">—</div>
+    <div class="mini-player-sub" id="mini-player-sub">0:00 / 0:00</div>
+  </div>
+  <div class="mini-player-scrub" id="mini-player-scrub"><div class="mini-player-scrub-fill" id="mini-player-scrub-fill"></div></div>
+</div>
+
+<audio id="an-audio" preload="metadata"></audio>
+
+<script src="/app.js"></script>
