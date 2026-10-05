@@ -5,3 +5,13 @@ __pycache__/
 *.log
 soundwave_output.xml
 tools/ffmpeg*/
+node_modules/
+.env
+.env.*
+soundwave/Songs/
+*.mp3
+*.wav
+*.flac
+.soundwave_*.json
+analyze_run.log
+pip_out.log

@@ -13,7 +13,7 @@ app.use(bodyParser.json())
 connect().catch(err => console.log(err))
 
 async function connect() {
-  await mongoose.connect("mongodb+srv://abhimokkapati:REDACTED@flashcards.yapezx1.mongodb.net/")
+  await mongoose.connect(process.env.MONGODB_URI)
   console.log("Successfully connected to MongoDB")
 }
 

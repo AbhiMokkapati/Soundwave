@@ -218,7 +218,7 @@ For EDM: default settings work well. For hip-hop/R&B: lower `VOCAL_ENERGY_PERCEN
 
 ```bat
 venv\Scripts\activate
-pip install pytest pytest-cov
+pip install -r requirements-dev.txt
 pytest tests\ -v
 ```
 
@@ -226,9 +226,10 @@ Tests use **synthetic audio only** (numpy-generated sine waves) — no real musi
 
 ```
 tests/
-├── conftest.py         ← shared fixtures (synthetic audio signals)
-├── test_analyzer.py    ← drop/build/breakdown/intro/dedup logic
-└── test_xml_handler.py ← XML generation, URI conversion, merge/roundtrip
+├── conftest.py             ← shared fixtures (synthetic audio signals)
+├── test_analyzer.py        ← drop/build/breakdown/intro/dedup logic
+├── test_xml_handler.py     ← XML generation, URI conversion, merge/roundtrip
+└── test_server_security.py ← web app host/origin guards, audio-only file serving
 ```
 
 Run with coverage:
@@ -246,36 +247,31 @@ Soundwave/
 ├── soundwave/
 │   ├── analyzer.py          ← audio analysis (librosa + Demucs)
 │   ├── config.py            ← all tunable thresholds
-│   └── rekordbox/
-│       ├── models.py        ← CuePoint, TrackAnalysis dataclasses
-│       └── xml_handler.py   ← Rekordbox XML read/write
+│   ├── library.py, lookup.py, lyrics.py, similarity.py
+│   ├── rekordbox/
+│   │   ├── models.py        ← CuePoint, TrackAnalysis dataclasses
+│   │   └── xml_handler.py   ← Rekordbox XML read/write
+│   └── *.html / *.js / *.css, albums/   ← unrelated legacy Express demo site (see below)
+├── webapp/
+│   ├── server.py            ← FastAPI backend (127.0.0.1 only)
+│   └── static/              ← browser UI
 ├── tests/
-│   ├── conftest.py
-│   ├── test_analyzer.py
-│   └── test_xml_handler.py
+├── tools/gen_icon.py
 ├── main.py                  ← CLI entry point
-├── setup.bat                ← Windows one-click setup
+├── run_app.bat / setup.bat  ← Windows launchers
 ├── requirements.txt
 └── requirements-dev.txt
 ```
 
----
+### Security notes
 
-## Roadmap (future app)
+- The web app has no login: it can read, rename and delete files by path. It binds to `127.0.0.1` only and rejects non-loopback `Host` headers and cross-site requests. Do not change the bind address or expose the port.
+- Your AcoustID key and last-used folder are stored in `~/.soundwave/config.json`, outside the repo. Never commit keys.
 
-The project is structured so the analysis and XML layers are decoupled from the CLI, making it straightforward to wrap in a GUI later:
+### Legacy demo site (`soundwave/*.html`, `app.js`, `playlists.js`)
 
-- **Desktop app** — Electron or Tauri wrapper around this Python backend
-- **Drag-and-drop UI** — drop a folder, see a track list with detected cues, edit before export
-- **Per-genre presets** — saved config profiles (EDM, hip-hop, house, techno)
-- **Playlist-aware export** — preserve playlist structure in the output XML
-- **BPM grid alignment** — snap cue points to the nearest beat after detection
+An older, unrelated Express + MongoDB music demo lives alongside the Python package. It needs `MONGODB_URI` set in the environment (no credentials are stored in the repo) and `npm install` inside `soundwave/`. Its tracks played from `soundwave/Songs/*.mp3`, which are no longer shipped (copyrighted audio); add your own files there if you want the player to work.
 
----
+### License
 
-## Limitations
-
-- Accuracy varies by genre. EDM drops are highly reliable; subtle transitions in ambient or jazz may miss.
-- Demucs vocal separation is excellent but not perfect — expect some false positives in melodic tracks with no lyrics.
-- Rekordbox's "existing track" import limitation means adding cues to an already-analyzed library requires deleting and re-importing tracks. See [Importing](#critical-existing-tracks).
-- The Demucs model (~80 MB) is downloaded on first run with vocal detection enabled.
+No license file is included, so by default all rights are reserved. Add one (for example MIT) if you want others to be able to use the code.

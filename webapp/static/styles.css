@@ -13,7 +13,7 @@
   --border-soft: #1a2440;
   --text: #e9eefb;
   --text-dim: #96a5c9;
-  --text-faint: #5c6a8f;
+  --text-faint: #8794b8;
   --accent: #29e0ff;
   --accent-hover: #6cecff;
   --accent-dim: rgba(41, 224, 255, 0.14);
@@ -47,7 +47,7 @@
   --border-soft: #dbe7f8;
   --text: #0e1a2e;
   --text-dim: #45557a;
-  --text-faint: #7d8bad;
+  --text-faint: #5a6a8f;
   --accent: #0077a3;
   --accent-hover: #005f87;
   --accent-dim: rgba(0, 119, 163, 0.12);
@@ -77,7 +77,7 @@
     --border-soft: #dbe7f8;
     --text: #0e1a2e;
     --text-dim: #45557a;
-    --text-faint: #7d8bad;
+    --text-faint: #5a6a8f;
     --accent: #0077a3;
     --accent-hover: #005f87;
     --accent-dim: rgba(0, 119, 163, 0.12);
@@ -548,7 +548,7 @@ table.browser tr.folder-row, table.browser tr.file-row { cursor: pointer; transi
 table.browser tr.folder-row:hover, table.browser tr.file-row:hover { background: var(--surface-hover); }
 
 .tag-genre { color: var(--text-dim); font-size: 12px; }
-.tag-missing { color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; }
+.tag-missing { color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; }
 .folder-icon { color: var(--accent); margin-right: 6px; }
 
 /* --- Log console (SSE output) --- */
@@ -637,7 +637,7 @@ table.browser tr.folder-row:hover, table.browser tr.file-row:hover { background:
   left: 50%;
   transform: translateX(-2px);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 3px;
@@ -657,7 +657,7 @@ table.browser tr.folder-row:hover, table.browser tr.file-row:hover { background:
   border-radius: 50%;
   background: var(--danger);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   border: none;
   cursor: pointer;
@@ -704,7 +704,7 @@ button.play-btn svg { width: 16px; height: 16px; }
 }
 .cue-chip {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   padding: 3px 9px;
   border-radius: 4px;
   color: #111;
@@ -941,7 +941,7 @@ a.link-btn:hover { text-decoration: underline; }
 
 #splash .splash-hint {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -1016,7 +1016,7 @@ a.link-btn:hover { text-decoration: underline; }
 }
 .pipeline-step-num {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-faint);
   letter-spacing: 0.05em;
@@ -1045,7 +1045,7 @@ a.link-btn:hover { text-decoration: underline; }
 
 .pipeline-step-status {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
   padding: 6px 9px;
   background: var(--bg);
@@ -1106,7 +1106,7 @@ a.link-btn:hover { text-decoration: underline; }
 }
 .stat-chip .stat-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-faint);
@@ -1314,7 +1314,7 @@ button.btn.icon svg { width: 16px; height: 16px; }
   transition: border-color 0.15s, transform 0.15s;
 }
 .flow-next:hover { border-color: var(--accent); transform: translateX(2px); }
-.flow-next-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-family: var(--font-mono); }
+.flow-next-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-family: var(--font-mono); }
 .flow-next-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-top: 2px; }
 .flow-next-arrow { color: var(--accent); font-size: 20px; flex-shrink: 0; transition: transform 0.15s; }
 .flow-next:hover .flow-next-arrow { transform: translateX(4px); }
@@ -1336,3 +1336,11 @@ table.browser tbody tr:nth-child(8) { animation-delay: 126ms; }
 table.browser tbody tr:nth-child(9) { animation-delay: 144ms; }
 table.browser tbody tr:nth-child(10) { animation-delay: 162ms; }
 table.browser tbody tr:nth-child(n+11) { animation-delay: 180ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

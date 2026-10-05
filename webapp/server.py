@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -54,6 +54,27 @@ SIMILARITY_CACHE_PATH = APP_DIR / "similarity_features.json"
 
 app = FastAPI(title="Soundwave")
 
+HOST, PORT = "127.0.0.1", 8765
+_ALLOWED_HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}", f"[::1]:{PORT}"}
+
+
+@app.middleware("http")
+async def _local_only_guard(request: Request, call_next):
+    """This API can read, rename and delete files by path with no login, so
+    it must only ever be reachable by the local user's own UI. Reject
+    requests whose Host header isn't a loopback name (DNS rebinding) and
+    any request a *different* website's page triggered (CSRF — e.g. an
+    <img> pointing at /api/tidy/stream), identified by the browser's
+    Sec-Fetch-Site / Origin headers."""
+    if request.headers.get("host", "").lower() not in _ALLOWED_HOSTS:
+        return JSONResponse({"error": "Forbidden host"}, status_code=403)
+    if request.headers.get("sec-fetch-site", "same-origin") not in ("same-origin", "none"):
+        return JSONResponse({"error": "Cross-site requests are not allowed"}, status_code=403)
+    origin = request.headers.get("origin")
+    if origin and origin.lower() not in {f"http://{h}" for h in _ALLOWED_HOSTS}:
+        return JSONResponse({"error": "Cross-origin requests are not allowed"}, status_code=403)
+    return await call_next(request)
+
 
 # ---------------------------------------------------------------------------
 # Config persistence (remembers last library path, AcoustID key, etc.)
@@ -80,7 +101,9 @@ def get_config():
 @app.post("/api/config")
 def post_config(patch: dict):
     cfg = _load_config()
-    cfg.update(patch)
+    # Plain string/number/bool settings only; ignore anything nested.
+    cfg.update({k: v for k, v in patch.items()
+                if isinstance(k, str) and isinstance(v, (str, int, float, bool, type(None)))})
     _save_config(cfg)
     return cfg
 
@@ -317,7 +340,9 @@ def _analyze_one(p: Path, use_demucs: bool, recompute: bool, cache: dict) -> dic
 @app.get("/api/track/analyze")
 def track_analyze(path: str, use_demucs: bool = False, recompute: bool = False):
     p = Path(path)
-    if not p.exists():
+    if p.suffix.lower() not in AUDIO_EXTENSIONS:
+        return JSONResponse({"error": "Not an audio file"}, status_code=400)
+    if not p.is_file():
         return JSONResponse({"error": f"File not found: {path}"}, status_code=404)
 
     cache = _analysis_cache()
@@ -339,6 +364,9 @@ def analyze_stream(
     batch run isn't lost if interrupted partway through."""
 
     def gen():
+        if Path(output).suffix.lower() != ".xml":
+            yield _sse({"type": "error", "message": "Output must be a .xml file"})
+            return
         files = _collect_audio_files(path)
         if not files:
             yield _sse({"type": "error", "message": f"No audio files found at: {path}"})
@@ -397,7 +425,10 @@ def analyze_stream(
 @app.get("/api/track/audio")
 def track_audio(path: str):
     p = Path(path)
-    if not p.exists():
+    # Only ever serve audio files, never arbitrary files from disk.
+    if p.suffix.lower() not in AUDIO_EXTENSIONS:
+        return JSONResponse({"error": "Not an audio file"}, status_code=400)
+    if not p.is_file():
         return JSONResponse({"error": f"File not found: {path}"}, status_code=404)
     media_type = _MEDIA_TYPES.get(p.suffix.lower(), "application/octet-stream")
     return FileResponse(str(p), media_type=media_type)
@@ -410,8 +441,11 @@ def track_waveform(path: str, points: int = 1000):
     import librosa
 
     p = Path(path)
-    if not p.exists():
+    if p.suffix.lower() not in AUDIO_EXTENSIONS:
+        return JSONResponse({"error": "Not an audio file"}, status_code=400)
+    if not p.is_file():
         return JSONResponse({"error": f"File not found: {path}"}, status_code=404)
+    points = max(10, min(points, 5000))
 
     WAVEFORM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     mtime = p.stat().st_mtime
@@ -451,8 +485,12 @@ class SaveCuesRequest(BaseModel):
 @app.post("/api/track/cues")
 def save_cues(req: SaveCuesRequest):
     p = Path(req.path)
-    if not p.exists():
+    if p.suffix.lower() not in AUDIO_EXTENSIONS:
+        return JSONResponse({"error": "Not an audio file"}, status_code=400)
+    if not p.is_file():
         return JSONResponse({"error": f"File not found: {req.path}"}, status_code=404)
+    if Path(req.output).suffix.lower() != ".xml":
+        return JSONResponse({"error": "Output must be a .xml file"}, status_code=400)
 
     info = _read_tags_summary(p)
     duration = req.duration_sec
@@ -517,6 +555,9 @@ def similarity_stream(
     import threading
 
     def gen():
+        if Path(output).suffix.lower() != ".xml":
+            yield _sse({"type": "error", "message": "Output must be a .xml file"})
+            return
         files = _collect_audio_files(path)
         if not files:
             yield _sse({"type": "error", "message": f"No audio files found at: {path}"})
@@ -601,6 +642,8 @@ def similarity_stream(
 
 @app.get("/api/playlists")
 def playlists(xml_path: str):
+    if Path(xml_path).suffix.lower() != ".xml":
+        return JSONResponse({"error": "Not an XML file"}, status_code=400)
     if not Path(xml_path).exists():
         return JSONResponse({"error": f"File not found: {xml_path}"}, status_code=404)
     return {"nodes": load_playlists_from_xml(xml_path)}
@@ -619,6 +662,9 @@ def playlists(xml_path: str):
 
 @app.get("/api/reimport-check")
 def reimport_check(output: str, rekordbox_xml: Optional[str] = None, live: bool = False):
+    for candidate in (output, rekordbox_xml):
+        if candidate and Path(candidate).suffix.lower() != ".xml":
+            return JSONResponse({"error": "Not an XML file"}, status_code=400)
     if not Path(output).exists():
         return JSONResponse({"error": f"File not found: {output}"}, status_code=404)
 
@@ -667,8 +713,6 @@ def _port_in_use(host: str, port: int) -> bool:
 if __name__ == "__main__":
     import webbrowser
     import uvicorn
-
-    HOST, PORT = "127.0.0.1", 8765
 
     # If something's already listening here (most often a previous run that
     # wasn't closed cleanly, e.g. the terminal window was closed with the X
