@@ -391,6 +391,12 @@ function prevTrack() {
         }
         }
 
+// Show a message instead of failing silently when a track's audio file
+// is missing from Songs/.
+curr_track.addEventListener("error", () => {
+  now_playing.textContent = "Audio file not found - add your own files to Songs/";
+});
+
 // Load the first track in the tracklist
 loadTrack(track_index);
 
