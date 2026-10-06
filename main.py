@@ -267,7 +267,7 @@ def organize(xml_path: str, methods, bpm_step: int, output: Optional[str]):
 @click.option("--sort-genres", is_flag=True,
               help="Move files into sub-folders named after their genre tag.")
 @click.option("--dedupe", is_flag=True,
-              help="Delete duplicate files that share the same title, keeping the largest.")
+              help="Delete duplicate files that share the same title and artist, keeping the largest.")
 @click.option("--rename", is_flag=True,
               help="Rename each file to its track title (sanitized).")
 @click.option("--clear-genre", multiple=True, metavar="FOLDER",
@@ -433,7 +433,9 @@ def similarity_playlists(path: str, output: str, base_xml: Optional[str], mode: 
     """
     import xml.etree.ElementTree as ET
 
-    from soundwave.rekordbox.xml_handler import add_playlist, build_xml, upsert_tracks_minimal, save_xml
+    from soundwave.rekordbox.xml_handler import (
+        add_playlist, build_xml, remove_playlists_with_prefix, save_xml, upsert_tracks_minimal,
+    )
     from soundwave.similarity import (
         cluster_summary, cluster_tracks, extract_features, similarity_path_order,
     )
@@ -476,6 +478,7 @@ def similarity_playlists(path: str, output: str, base_xml: Optional[str], mode: 
     id_by_path = dict(zip(analyzed_paths, track_ids))
 
     if mode in ("clusters", "both"):
+        remove_playlists_with_prefix(xml_root, folder, "Similarity ")
         groups = cluster_tracks(features, clusters)
         click.echo(f"\nBuilt {len(groups)} similarity cluster(s):")
         for i, group_paths in groups.items():

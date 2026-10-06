@@ -106,13 +106,19 @@ _YOUTUBE_NOISE = re.compile(
 _TRAILING_NUMBER = re.compile(r"\s+\d+$")
 
 
-def _strip_youtube_noise(title: str) -> str:
-    """Remove YouTube metadata noise from anywhere in a title string."""
+def _strip_youtube_noise(title: str, *, strip_trailing_number: bool = True) -> str:
+    """Remove YouTube metadata noise from anywhere in a title string.
+
+    strip_trailing_number should be False for titles that came from a real
+    tag rather than a downloaded filename: "Studio 54" and "Blink 182" are
+    complete titles, not a filename with a stray counter appended.
+    """
     prev = None
     while prev != title:
         prev = title
         title = _YOUTUBE_NOISE.sub("", title).strip()
-    title = _TRAILING_NUMBER.sub("", title).strip()
+    if strip_trailing_number:
+        title = _TRAILING_NUMBER.sub("", title).strip()
     # Collapse any double spaces left behind
     title = re.sub(r"  +", " ", title).strip(" -")
     return title
@@ -384,6 +390,9 @@ def dedupe_by_title(
     """
     Scan all files first to find duplicates, then yield a line per deletion.
     Keeps the largest file in each duplicate group.
+
+    Duplicates share both title and artist: title alone would delete
+    different songs that happen to share a name ("Closer", "Home", "Intro").
     """
     yield "Scanning for duplicates..."
 
@@ -393,7 +402,11 @@ def dedupe_by_title(
         title_raw = None
         if tags is not None:
             title_raw = (tags.get("title") or [None])[0]
-        title_key = (title_raw or path.stem).strip().lower()
+        artist_raw = (tags.get("artist") or [None])[0] if tags is not None else None
+        title_key = (
+            (artist_raw or "").strip().lower(),
+            (title_raw or path.stem).strip().lower(),
+        )
         groups.setdefault(title_key, []).append(path)
 
     found_any = False
@@ -435,12 +448,11 @@ def rename_to_track_name(
             continue
 
         if title_str:
-            # Strip "Artist - Title" prefix if present (YouTube/download artifact)
-            _, parsed_track = _parse_artist_title_from_filename(title_str)
-            if parsed_track:
-                title_str = parsed_track
-            # Strip YouTube noise (e.g. "Havana (Audio)" -> "Havana")
-            title_str = _strip_youtube_noise(title_str)
+            # The tag is already a title, so don't re-parse it as "Artist -
+            # Title" ("Levitating - Remix" would become "Remix") or strip a
+            # trailing number ("Studio 54" would become "Studio"). Only the
+            # bracketed download noise ("Havana (Audio)") is safe to drop.
+            title_str = _strip_youtube_noise(title_str, strip_trailing_number=False)
 
         if not title_str:
             title_str = _clean_title_from_stem(path.stem) or ""

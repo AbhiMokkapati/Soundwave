@@ -1,17 +1,27 @@
+# Environments and bundled tools
 venv/
-__pycache__/
-.pytest_cache/
-.claude/
-*.log
-soundwave_output.xml
 tools/ffmpeg*/
 node_modules/
 .env
 .env.*
+
+# Python / test artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated output and logs (contain personal file paths)
+*.log
+soundwave_output.xml
+.soundwave_*.json
+analyze_run.log
+pip_out.log
+
+# Local media
 soundwave/Songs/
 *.mp3
 *.wav
 *.flac
-.soundwave_*.json
-analyze_run.log
-pip_out.log
+
+# Local editor / assistant settings
+.claude/settings.local.json

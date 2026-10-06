@@ -31,7 +31,7 @@ from soundwave.lyrics import fetch_lyrics
 from soundwave.rekordbox.models import CuePoint, TrackAnalysis
 from soundwave.rekordbox.xml_handler import (
     add_playlist, build_xml, load_playlists_from_xml, load_tracks_from_live_db,
-    load_tracks_from_xml, save_xml, upsert_tracks_minimal,
+    load_tracks_from_xml, remove_playlists_with_prefix, save_xml, upsert_tracks_minimal,
 )
 from soundwave.similarity import (
     cluster_summary, cluster_tracks, extract_features, similarity_path_order,
@@ -377,6 +377,12 @@ def analyze_stream(
         cache = _analysis_cache()
         failed: List[str] = []
         total_cues = 0
+        # base_xml seeds only the first write; after that the running output
+        # is the base. Re-reading base_xml every iteration would rebuild from
+        # it each time and drop every previously analyzed track's cues.
+        seed_xml = base_xml if base_xml and Path(base_xml).exists() else (
+            output if Path(output).exists() else None
+        )
 
         for i, fpath in enumerate(files, 1):
             name = Path(fpath).name
@@ -395,9 +401,7 @@ def analyze_stream(
                 bpm=payload["bpm"],
                 cues=[CuePoint(c["label"], c["time_sec"], c["color"]) for c in payload["cues"]],
             )
-            base = base_xml if base_xml and Path(base_xml).exists() else (
-                output if Path(output).exists() else None
-            )
+            base = seed_xml if i == 1 else output
             root = build_xml([analysis], base_xml_path=base)
             save_xml(root, output)
             total_cues += len(payload["cues"])
@@ -614,6 +618,7 @@ def similarity_stream(
         summary = {"clusters": [], "path": None}
 
         if mode in ("clusters", "both"):
+            remove_playlists_with_prefix(xml_root, "Similarity", "Similarity ")
             groups = cluster_tracks(features, clusters)
             for i, group_paths in groups.items():
                 name = f"Similarity {i + 1} ({cluster_summary(features, group_paths)})"
