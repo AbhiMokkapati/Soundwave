@@ -17,6 +17,33 @@ DROP_MIN_DURATION_SEC = 4.0        # Minimum seconds a high-energy run must sust
 DROP_MERGE_GAP_SEC = 2.0           # Merge drop candidates within this many seconds
 MAX_DROPS = 4                      # Keep only the strongest N drops per track
 
+# --- Drum-stem drop detection (used when Demucs stems are available) ---
+# A drop is where the kick comes back after a gap, and the mix gets louder.
+# Kick presence is measured on the drum stem's low band, since breakdowns
+# often keep hats/percussion going and only drop the kick.
+DRUM_HOP = 512                     # Samples per frame (~12-23 ms) — fine enough to locate the first kick
+DRUM_KICK_LOW_HZ = 30
+DRUM_KICK_HIGH_HZ = 150
+DRUM_PRESENCE_SMOOTH_SEC = 0.5     # Smoothing for presence/gap detection only; the drop time itself is refined on unsmoothed frames
+DRUM_PRESENCE_FRACTION = 0.2       # Kick counts as "present" above this fraction of the track's 90th-percentile kick level
+DRUM_GAP_MIN_SEC = 4.0             # Kick-free stretch that counts as a break (~2 bars at 120 BPM)
+DRUM_ONSET_FRACTION = 0.5          # First kick = first frame above this fraction of the peak in the next 2 s
+DROP_MIN_CONTRAST = 1.2            # Mix must be this much louder after the kick returns than before, or it isn't a drop
+DROP_CONTRAST_BEFORE_SEC = 16.0    # ...vs the kick-free gap before it (up to this long)
+DROP_CONTRAST_AFTER_SEC = 8.0
+
+# --- Build detection from the high band (used with drum stems) ---
+# Mastered tracks keep their overall loudness flat (or dip for a bar) going
+# into a drop, so a loudness slope misses most builds. Risers, snare rolls
+# and filter sweeps show up as a climb in the 2-10 kHz band instead.
+BUILD_BAND_LOW_HZ = 2000
+BUILD_BAND_HIGH_HZ = 10000
+BUILD_SMOOTH_SEC = 1.0
+BUILD_MAX_SEC = 32.0               # How far before a drop a build can start
+BUILD_MIN_SEC = 4.0                # Shortest climb that counts (~2 bars)
+BUILD_MIN_RISE_DB = 6.0            # High-band level must climb at least this much
+BUILD_PEAK_MAX_GAP_SEC = 8.0       # The climb must peak this close to the drop (not far earlier)
+
 # --- Vocal entry detection ---
 # Relative to each track's own vocal-stem loudness (percentile of its RMS
 # distribution) rather than a fixed absolute number — Demucs stem loudness
@@ -49,6 +76,7 @@ MAX_BREAKS = 3                     # Keep only the deepest N breakdowns per trac
 # --- without a clean EDM-style drop) ---
 SECTION_NOVELTY_PERCENTILE = 90    # Spectral-novelty percentile a frame must exceed
 SECTION_MIN_GAP_SEC = 20.0         # Minimum spacing between section markers, and from other cues
+SECTION_MIN_START_SEC = 4.0        # Ignore novelty peaks this close to the start (that's just the track beginning)
 MAX_SECTIONS = 3                   # Keep up to N section markers per track
 
 # --- Outro detection ---
@@ -60,6 +88,11 @@ SNAP_DROPS_TO_BARS = 1             # Snap drops to nearest N-bar boundary. Was 4
                                     # which could drag a cue up to 2 bars from the actual hit — audibly
                                     # "off". 1 bar keeps the DJ-friendly downbeat snap without the drift.
 SNAP_OTHERS_TO_BEATS = 1           # Snap other cues to nearest N-beat boundary
+
+# Cues that mark the start of a bar/phrase. When real downbeats are known
+# (Rekordbox grid) these snap to the nearest downbeat instead of any beat.
+# VOCAL is excluded: sung entries often start on a pickup before the bar.
+DOWNBEAT_SNAP_LABELS = {"INTRO", "DROP", "BUILD", "BREAK", "SECTION", "OUTRO32", "OUTRO16"}
 
 # --- General ---
 FRAME_HOP_SEC = 0.1                # Analysis resolution in seconds

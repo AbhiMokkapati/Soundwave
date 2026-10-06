@@ -11,7 +11,7 @@ the file, not the full track, to keep this fast on large libraries):
   - RMS energy — loudness/intensity
   - MFCCs (13) — overall timbral fingerprint
 
-Results are cached to a JSON sidecar file keyed by resolved path + mtime, so
+Results are cached to a JSON sidecar file keyed by resolved path + mtime + analysis window, so
 re-running clustering/path-building after the first pass is nearly instant.
 """
 
@@ -84,7 +84,7 @@ def extract_features(
 ) -> Dict[str, Dict[str, float]]:
     """
     Return {path: {feature_name: value}} for every path, using and updating
-    a JSON cache keyed by (resolved path, mtime) so unchanged files are only
+    a JSON cache keyed by (resolved path, mtime, analysis_sec) so unchanged files are only
     analyzed once.
 
     on_progress(index, total, path, cached), if given, is called once per
@@ -103,7 +103,7 @@ def extract_features(
             mtime = Path(path).stat().st_mtime
         except OSError:
             continue
-        key = f"{resolved}::{mtime}"
+        key = f"{resolved}::{mtime}::{analysis_sec:g}s"
 
         if key in cache:
             results[resolved] = cache[key]

@@ -325,6 +325,32 @@ def add_playlist(
         root_node.set("Count", str(len(root_node.findall("NODE"))))
 
 
+def remove_playlists_with_prefix(root: ET.Element, folder: str, prefix: str) -> int:
+    """Remove playlists in `folder` whose name starts with `prefix`.
+
+    Generated playlist names embed run-specific text (e.g. the cluster's
+    average BPM), so add_playlist's replace-by-name can't clear the last
+    run's output; without this, re-running with different settings piles up
+    stale playlists next to the new ones. Returns how many were removed.
+    """
+    root_node = _get_root_playlist_node(root)
+    folder_node = next(
+        (n for n in root_node.findall("NODE")
+         if n.get("Name") == folder and n.get("Type") == "0"),
+        None,
+    )
+    if folder_node is None:
+        return 0
+    stale = [
+        n for n in folder_node.findall("NODE")
+        if n.get("Type") == "1" and (n.get("Name") or "").startswith(prefix)
+    ]
+    for n in stale:
+        folder_node.remove(n)
+    folder_node.set("Count", str(len(folder_node.findall("NODE"))))
+    return len(stale)
+
+
 def upsert_tracks_minimal(
     root: ET.Element,
     audio_paths: List[str],

@@ -10,6 +10,7 @@ import pytest
 
 from soundwave.analyzer import (
     _dedupe_and_cap,
+    _audio_start_sec,
     _get_beat_times,
     _snap_cue,
     detect_breakdowns,
@@ -117,39 +118,46 @@ class TestBreakdownDetection:
 # ---------------------------------------------------------------------------
 
 class TestIntroDetection:
-    def test_intro_placed_before_first_drop(self, signal_with_drop):
-        y, sr = signal_with_drop
-        drops = detect_drops(y, sr)
-        _, beat_times = _get_beat_times(y, sr)
-        intro = detect_intro(drops, beat_times)
-        assert intro is not None
-        if drops:
-            assert intro.time_sec < drops[0].time_sec
+    BEATS = 1.0 + 0.5 * np.arange(64)          # 120 BPM grid starting at 1.0s
+    DOWNBEATS = BEATS[2::4]                    # grid starts on beat 3 -> bar lines at 2.0, 4.0, ...
 
-    def test_intro_non_negative(self, signal_with_drop):
-        y, sr = signal_with_drop
-        drops = detect_drops(y, sr)
-        _, beat_times = _get_beat_times(y, sr)
-        intro = detect_intro(drops, beat_times)
-        if intro:
-            assert intro.time_sec >= 0
+    def test_intro_is_first_downbeat_not_first_beat(self):
+        intro = detect_intro(self.BEATS, self.DOWNBEATS)
+        assert intro.label == "INTRO" and intro.time_sec == 2.0
 
-    def test_intro_label(self, signal_with_drop):
-        y, sr = signal_with_drop
-        drops = detect_drops(y, sr)
-        _, beat_times = _get_beat_times(y, sr)
-        intro = detect_intro(drops, beat_times)
-        if intro:
-            assert intro.label == "INTRO"
+    def test_intro_without_downbeats_is_first_beat(self):
+        assert detect_intro(self.BEATS).time_sec == 1.0
 
-    def test_intro_snapped_to_beat(self, signal_with_drop):
+    def test_intro_skips_silent_lead_in(self):
+        # audio only starts at 5.0s: first bar line at/after that is 6.0
+        assert detect_intro(self.BEATS, self.DOWNBEATS, audio_start_sec=5.0).time_sec == 6.0
+
+    def test_downbeat_on_the_first_attack_counts(self):
+        assert detect_intro(self.BEATS, self.DOWNBEATS, audio_start_sec=2.05).time_sec == 2.0
+
+    def test_intro_ignores_where_the_drop_is(self):
+        # regression: used to be placed 2 bars before the first drop, i.e. far into the track
+        assert detect_intro(self.BEATS, self.DOWNBEATS).time_sec == 2.0
+
+    def test_no_beats_no_intro(self):
+        assert detect_intro(np.array([])) is None
+
+    def test_audio_start_skips_leading_silence(self):
+        sr = 22050
+        t = np.arange(sr * 4) / sr
+        y = np.concatenate([np.zeros(sr * 3, dtype=np.float32),
+                            (np.sin(2 * np.pi * 440 * t) * 0.5).astype(np.float32)])
+        assert abs(_audio_start_sec(y, sr) - 3.0) < 0.1
+
+    def test_audio_start_zero_when_music_starts_immediately(self, signal_with_drop):
         y, sr = signal_with_drop
-        drops = detect_drops(y, sr)
+        assert _audio_start_sec(y, sr) < 0.1
+
+    def test_real_audio_intro_is_on_the_beat_grid(self, signal_with_drop):
+        y, sr = signal_with_drop
         _, beat_times = _get_beat_times(y, sr)
-        intro = detect_intro(drops, beat_times)
-        if intro and len(beat_times):
-            diffs = np.abs(beat_times - intro.time_sec)
-            assert diffs.min() < 0.5, "Intro should land within 0.5s of a beat"
+        intro = detect_intro(beat_times, None, _audio_start_sec(y, sr))
+        assert intro is not None and np.abs(beat_times - intro.time_sec).min() < 0.01
 
 
 # ---------------------------------------------------------------------------
@@ -310,3 +318,23 @@ class TestDedupeAndCap:
         result = _dedupe_and_cap(drops + builds + vocals + sections + breaks)
         labels = {c.label for c in result}
         assert labels == {"DROP", "BUILD", "VOCAL", "SECTION", "BREAK"}
+
+
+class TestNoCuesAtTrackStart:
+    def test_quiet_intro_is_not_a_breakdown(self):
+        # silence at the very start then loud music: nothing for it to "break down" from
+        import numpy as np
+        from soundwave.analyzer import detect_breakdowns
+        sr = 22050
+        t = np.arange(int(sr * 30)) / sr
+        loud = (np.sin(2 * np.pi * 440 * t) * 0.9).astype(np.float32)
+        y = np.concatenate([np.zeros(int(sr * 12), dtype=np.float32), loud])
+        assert all(c.time_sec > 0 for c in detect_breakdowns(y, sr))
+
+    def test_section_not_placed_at_the_first_onset(self):
+        import numpy as np
+        from soundwave.analyzer import detect_sections
+        sr = 22050
+        rng = np.random.default_rng(0)
+        y = np.concatenate([rng.standard_normal(sr * 2) * 0.5, np.zeros(sr * 40)]).astype(np.float32)
+        assert all(c.time_sec >= 4.0 for c in detect_sections(y, sr, []))

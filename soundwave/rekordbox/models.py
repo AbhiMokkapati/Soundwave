@@ -19,3 +19,4 @@ class TrackAnalysis:
     duration_sec: float
     bpm: float
     cues: List[CuePoint] = field(default_factory=list)
+    grid_source: str = "librosa"  # "rekordbox" when cues snapped to Rekordbox's own beat grid

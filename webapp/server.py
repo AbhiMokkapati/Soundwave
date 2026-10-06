@@ -22,7 +22,8 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from soundwave.analyzer import analyze_track
+from soundwave.analyzer import ANALYSIS_VERSION, analyze_track, grid_fingerprint
+from soundwave.rekordbox.anlz_grid import RekordboxIndex
 from soundwave.library import (
     clear_genre_from_folders, dedupe_by_title, enrich_with_lookup,
     fill_missing_tags, rename_to_track_name, sort_by_genre,
@@ -31,7 +32,7 @@ from soundwave.lyrics import fetch_lyrics
 from soundwave.rekordbox.models import CuePoint, TrackAnalysis
 from soundwave.rekordbox.xml_handler import (
     add_playlist, build_xml, load_playlists_from_xml, load_tracks_from_live_db,
-    load_tracks_from_xml, save_xml, upsert_tracks_minimal,
+    load_tracks_from_xml, remove_playlists_with_prefix, save_xml, upsert_tracks_minimal,
 )
 from soundwave.similarity import (
     cluster_summary, cluster_tracks, extract_features, similarity_path_order,
@@ -313,21 +314,23 @@ def _save_analysis_cache(cache: dict) -> None:
     ANALYSIS_CACHE_PATH.write_text(json.dumps(cache, indent=2), encoding="utf-8")
 
 
-def _analyze_one(p: Path, use_demucs: bool, recompute: bool, cache: dict) -> dict:
+def _analyze_one(p: Path, use_demucs: bool, recompute: bool, cache: dict,
+                 rb_index: Optional[RekordboxIndex] = None) -> dict:
     """Analyze a single file, using/populating the given cache dict in place.
     Caller owns loading/saving the cache to disk (batch callers do this once
     around a whole loop instead of per file)."""
     mtime = p.stat().st_mtime
-    key = f"{p.resolve()}::{use_demucs}::{mtime}"
+    key = f"{p.resolve()}::{use_demucs}::{mtime}::grid={grid_fingerprint(str(p), rb_index)}::v{ANALYSIS_VERSION}"
     if not recompute and key in cache:
         return cache[key]
 
-    result = analyze_track(str(p), use_demucs=use_demucs)
+    result = analyze_track(str(p), use_demucs=use_demucs, rb_index=rb_index)
     payload = {
         "title": result.title,
         "artist": result.artist,
         "bpm": result.bpm,
         "duration_sec": result.duration_sec,
+        "grid_source": result.grid_source,
         "cues": [
             {"label": c.label, "time_sec": c.time_sec, "color": c.color}
             for c in result.cues
@@ -346,7 +349,7 @@ def track_analyze(path: str, use_demucs: bool = False, recompute: bool = False):
         return JSONResponse({"error": f"File not found: {path}"}, status_code=404)
 
     cache = _analysis_cache()
-    payload = _analyze_one(p, use_demucs, recompute, cache)
+    payload = _analyze_one(p, use_demucs, recompute, cache, RekordboxIndex.load())
     _save_analysis_cache(cache)
     return payload
 
@@ -375,13 +378,20 @@ def analyze_stream(
         yield _sse({"type": "step", "label": f"Found {len(files)} audio file(s). Analyzing..."})
 
         cache = _analysis_cache()
+        rb_index = RekordboxIndex.load()  # once per batch; None -> own beat tracker
         failed: List[str] = []
         total_cues = 0
+        # base_xml seeds only the first write; after that the running output
+        # is the base. Re-reading base_xml every iteration would rebuild from
+        # it each time and drop every previously analyzed track's cues.
+        seed_xml = base_xml if base_xml and Path(base_xml).exists() else (
+            output if Path(output).exists() else None
+        )
 
         for i, fpath in enumerate(files, 1):
             name = Path(fpath).name
             try:
-                payload = _analyze_one(Path(fpath), use_demucs, recompute, cache)
+                payload = _analyze_one(Path(fpath), use_demucs, recompute, cache, rb_index)
             except Exception as exc:
                 failed.append(name)
                 yield _sse({"type": "line", "text": f"[{i}/{len(files)}] ERROR '{name}': {exc}"})
@@ -395,9 +405,7 @@ def analyze_stream(
                 bpm=payload["bpm"],
                 cues=[CuePoint(c["label"], c["time_sec"], c["color"]) for c in payload["cues"]],
             )
-            base = base_xml if base_xml and Path(base_xml).exists() else (
-                output if Path(output).exists() else None
-            )
+            base = seed_xml if i == 1 else output
             root = build_xml([analysis], base_xml_path=base)
             save_xml(root, output)
             total_cues += len(payload["cues"])
@@ -614,6 +622,7 @@ def similarity_stream(
         summary = {"clusters": [], "path": None}
 
         if mode in ("clusters", "both"):
+            remove_playlists_with_prefix(xml_root, "Similarity", "Similarity ")
             groups = cluster_tracks(features, clusters)
             for i, group_paths in groups.items():
                 name = f"Similarity {i + 1} ({cluster_summary(features, group_paths)})"
