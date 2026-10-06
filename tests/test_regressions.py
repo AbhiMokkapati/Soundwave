@@ -152,7 +152,7 @@ class TestBatchAnalyzeWithBaseXml:
         save_xml(build_xml([]), str(base))
         out = tmp_path / "out.xml"
 
-        def fake_analyze(p, use_demucs, recompute, cache):
+        def fake_analyze(p, use_demucs, recompute, cache, rb_index=None):
             return {"title": p.stem, "artist": "A", "bpm": 120.0, "duration_sec": 100.0,
                     "cues": [{"label": "DROP", "time_sec": 10.0, "color": 1}]}
 

@@ -58,8 +58,15 @@ def cli():
                    "XML after it's lost or overwritten is near-instant instead of re-analyzing.")
 @click.option("--recompute", is_flag=True,
               help="Ignore the cache and re-analyze every file.")
+@click.option("--stem-cache", default=None, type=click.Path(file_okay=False),
+              help="Keep Demucs' vocal/drum stems here (~50 MB/track) so re-analysing "
+                   "after a detector change skips the ~1x-realtime separation.")
+@click.option("--no-rekordbox-grid", is_flag=True,
+              help="Don't use Rekordbox's own beat grid/bar positions; use Soundwave's "
+                   "beat tracker for every track (less accurate).")
 def analyze(path: str, output: str, base_xml: Optional[str], dry_run: bool, no_lyrics: bool,
-            playlist: Optional[str], cache: Optional[str], recompute: bool):
+            playlist: Optional[str], cache: Optional[str], recompute: bool,
+            stem_cache: Optional[str], no_rekordbox_grid: bool):
     """
     Analyze audio file(s) and generate a Rekordbox XML with hot cues.
 
@@ -71,6 +78,7 @@ def analyze(path: str, output: str, base_xml: Optional[str], dry_run: bool, no_l
     library first, then import the XML — otherwise Rekordbox won't update its cues.
     """
     from soundwave.analyzer import analyze_track_cached, load_analysis_cache, save_analysis_cache
+    from soundwave.rekordbox.anlz_grid import RekordboxIndex
     from soundwave.rekordbox.xml_handler import build_xml, load_tracks_from_xml, save_xml
 
     files = _collect_audio(path)
@@ -90,6 +98,12 @@ def analyze(path: str, output: str, base_xml: Optional[str], dry_run: bool, no_l
         click.echo("Vocal detection enabled (Demucs). First run downloads ~80MB model.")
     click.echo(f"Using analysis cache: {cache_path}")
 
+    rb_index = None if no_rekordbox_grid else RekordboxIndex.load()
+    if rb_index is not None:
+        click.echo(f"Using Rekordbox beat grids ({len(rb_index)} analysed tracks found).")
+    elif not no_rekordbox_grid:
+        click.echo("Rekordbox library not found; using Soundwave's own beat tracking.")
+
     analyses = []
     failed = []
 
@@ -99,7 +113,8 @@ def analyze(path: str, output: str, base_xml: Optional[str], dry_run: bool, no_l
         click.echo(f"Track: {name}")
         try:
             result, was_cached = analyze_track_cached(
-                audio_path, analysis_cache, use_demucs=not no_lyrics,
+                audio_path, analysis_cache, use_demucs=not no_lyrics, rb_index=rb_index,
+                stem_cache_dir=Path(stem_cache) if stem_cache else None,
             )
             analyses.append(result)
             if was_cached:
@@ -134,6 +149,58 @@ def analyze(path: str, output: str, base_xml: Optional[str], dry_run: bool, no_l
 
     if failed:
         click.echo(f"\nFailed ({len(failed)}): {', '.join(failed)}")
+
+
+@cli.command()
+@click.argument("path", required=False)
+@click.option("--sample", "-n", default=12, show_default=True, help="Number of tracks to sample.")
+@click.option("--seed", default=1, show_default=True, help="Sampling seed (same seed = same tracks).")
+@click.option("--with-stems", is_flag=True,
+              help="Also score drop detection from Demucs drum stems (~1x realtime per track; use --stem-cache).")
+@click.option("--stem-cache", default=None, type=click.Path(file_okay=False),
+              help="Folder to keep separated stems in, so re-runs skip Demucs.")
+@click.option("--track-list", default=None, type=click.Path(exists=True, dir_okay=False),
+              help="Text file with one audio path per line; evaluate exactly these tracks.")
+@click.option("--truth", default=None, metavar="JSON",
+              help="Hand-corrected cues {audio_path: [{label, time_sec}]}; adds true accuracy numbers "
+                   "and evaluates exactly those tracks.")
+@click.option("--write-truth-template", default=None, metavar="JSON",
+              help="Write the predicted cues for the evaluated tracks here, to edit into a truth file.")
+def evaluate(path: Optional[str], sample: int, seed: int, with_stems: bool, stem_cache: Optional[str],
+             track_list: Optional[str], truth: Optional[str], write_truth_template: Optional[str]):
+    """Measure cue placement against Rekordbox's own analysis (and optional truth).
+
+    PATH limits sampling to tracks under that folder. Needs a Rekordbox
+    library whose tracks have been analysed.
+    """
+    import json
+    from soundwave.eval_runner import evaluate_tracks, format_report, load_truth, sample_tracks
+    from soundwave.rekordbox.anlz_grid import RekordboxIndex
+
+    index = RekordboxIndex.load()
+    if index is None:
+        click.echo("No Rekordbox library found - evaluation needs Rekordbox's analysis as its reference.")
+        sys.exit(1)
+
+    truth_data = load_truth(truth) if truth else None
+    if truth_data:
+        paths = list(truth_data)
+    elif track_list:
+        paths = [l.strip() for l in Path(track_list).read_text(encoding="utf-8").splitlines() if l.strip()]
+    else:
+        paths = sample_tracks(index, path, sample, seed)
+    if not paths:
+        click.echo("No analysed tracks to evaluate.")
+        sys.exit(1)
+
+    result = evaluate_tracks(paths, index, use_stems=with_stems,
+                             stem_cache_dir=Path(stem_cache) if stem_cache else None,
+                             truth=truth_data, progress=click.echo)
+    click.echo("\n" + format_report(result))
+
+    if write_truth_template:
+        Path(write_truth_template).write_text(json.dumps(result["template"], indent=2), encoding="utf-8")
+        click.echo(f"\nTruth template written to {write_truth_template} - correct the times, then re-run with --truth.")
 
 
 @cli.command(name="show-xml")

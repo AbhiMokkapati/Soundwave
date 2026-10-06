@@ -22,7 +22,8 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from soundwave.analyzer import analyze_track
+from soundwave.analyzer import ANALYSIS_VERSION, analyze_track, grid_fingerprint
+from soundwave.rekordbox.anlz_grid import RekordboxIndex
 from soundwave.library import (
     clear_genre_from_folders, dedupe_by_title, enrich_with_lookup,
     fill_missing_tags, rename_to_track_name, sort_by_genre,
@@ -313,21 +314,23 @@ def _save_analysis_cache(cache: dict) -> None:
     ANALYSIS_CACHE_PATH.write_text(json.dumps(cache, indent=2), encoding="utf-8")
 
 
-def _analyze_one(p: Path, use_demucs: bool, recompute: bool, cache: dict) -> dict:
+def _analyze_one(p: Path, use_demucs: bool, recompute: bool, cache: dict,
+                 rb_index: Optional[RekordboxIndex] = None) -> dict:
     """Analyze a single file, using/populating the given cache dict in place.
     Caller owns loading/saving the cache to disk (batch callers do this once
     around a whole loop instead of per file)."""
     mtime = p.stat().st_mtime
-    key = f"{p.resolve()}::{use_demucs}::{mtime}"
+    key = f"{p.resolve()}::{use_demucs}::{mtime}::grid={grid_fingerprint(str(p), rb_index)}::v{ANALYSIS_VERSION}"
     if not recompute and key in cache:
         return cache[key]
 
-    result = analyze_track(str(p), use_demucs=use_demucs)
+    result = analyze_track(str(p), use_demucs=use_demucs, rb_index=rb_index)
     payload = {
         "title": result.title,
         "artist": result.artist,
         "bpm": result.bpm,
         "duration_sec": result.duration_sec,
+        "grid_source": result.grid_source,
         "cues": [
             {"label": c.label, "time_sec": c.time_sec, "color": c.color}
             for c in result.cues
@@ -346,7 +349,7 @@ def track_analyze(path: str, use_demucs: bool = False, recompute: bool = False):
         return JSONResponse({"error": f"File not found: {path}"}, status_code=404)
 
     cache = _analysis_cache()
-    payload = _analyze_one(p, use_demucs, recompute, cache)
+    payload = _analyze_one(p, use_demucs, recompute, cache, RekordboxIndex.load())
     _save_analysis_cache(cache)
     return payload
 
@@ -375,6 +378,7 @@ def analyze_stream(
         yield _sse({"type": "step", "label": f"Found {len(files)} audio file(s). Analyzing..."})
 
         cache = _analysis_cache()
+        rb_index = RekordboxIndex.load()  # once per batch; None -> own beat tracker
         failed: List[str] = []
         total_cues = 0
         # base_xml seeds only the first write; after that the running output
@@ -387,7 +391,7 @@ def analyze_stream(
         for i, fpath in enumerate(files, 1):
             name = Path(fpath).name
             try:
-                payload = _analyze_one(Path(fpath), use_demucs, recompute, cache)
+                payload = _analyze_one(Path(fpath), use_demucs, recompute, cache, rb_index)
             except Exception as exc:
                 failed.append(name)
                 yield _sse({"type": "line", "text": f"[{i}/{len(files)}] ERROR '{name}': {exc}"})

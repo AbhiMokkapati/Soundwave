@@ -42,10 +42,10 @@ Rekordbox's SQLite database (`master.db`) is encrypted with SQLCipher and its sc
 
 | Label     | Color   | What it marks |
 |-----------|---------|---------------|
-| INTRO     | White   | Track start / mix-in point |
-| DROP      | Red     | Main drop(s) / peak energy moment(s) — up to 4 per track |
-| BUILD     | Green   | Start of a pre-drop build |
-| BREAK     | Yellow  | Breakdown / low-energy valley |
+| INTRO     | White   | Track start / mix-in point — the first bar line once the audio begins (skips silent lead-in) |
+| DROP      | Red     | Main drop(s) — where the kick returns after a break and the mix gets louder (needs Demucs; otherwise the loudest sustained sections) — up to 4 per track |
+| BUILD     | Green   | Start of the pre-drop build — where the high-frequency riser starts climbing, rounded to whole 4-bar phrases before the drop |
+| BREAK     | Yellow  | Breakdown — the first beat where the kick leaves, for a section the kick later returns from |
 | VOCAL     | Blue    | Sustained vocal entry (verse/chorus start) — up to 3 per track |
 | OUTRO32   | Orange  | Start of the last 32 bars |
 | OUTRO16   | Pink    | Start of the last 16 bars |
@@ -214,6 +214,50 @@ For EDM: default settings work well. For hip-hop/R&B: lower `VOCAL_ENERGY_PERCEN
 
 ---
 
+## Cue accuracy
+
+### Beat grid
+
+Cues snap to **Rekordbox's own beat grid and bar positions** whenever the track has already been analysed in Rekordbox (read-only, from a temp copy of `master.db` and the track's ANLZ files). That is the grid you see in Rekordbox — including any manual corrections — and unlike librosa's tracker it knows which beat is the downbeat. Bar-start cues (INTRO, DROP, BUILD, BREAK, SECTION, OUTRO) land exactly on a Rekordbox bar start; VOCAL snaps to the nearest beat since sung entries often start on a pickup.
+
+Tracks Rekordbox hasn't analysed fall back to librosa, whose grid runs ~20–60 ms late and whose bar phase is a guess. **Analyse your library in Rekordbox first** for the best placement. Pass `--no-rekordbox-grid` to disable.
+
+The analysis cache key includes the Rekordbox grid's identity, so re-analysing a track (or editing its grid) in Rekordbox invalidates its cached cues.
+
+### Drops, breaks and builds
+
+With vocal detection on (the default), drops come from Demucs' **drum stem**: a drop is where the kick returns after a kick-free stretch of 4+ seconds *and* the mix gets louder when it does. The cue sits on the first real kick, so hat/snare pickups before the drop don't pull it early. Tracks with no such gap (continuous-kick pop, say) and `--no-lyrics` runs fall back to the older loudness-based detector. Demucs separates all four stems regardless, so this costs nothing extra over vocal detection.
+
+The same kick structure gives the other two:
+
+- **BREAK** is the first beat with no kick where the kick later returns (not the intro, and not the outro). Longest breakdowns are kept first.
+- **BUILD** is where the 2–10 kHz band starts a sustained climb (6+ dB over 4+ seconds, peaking within 8 s of the drop). Overall loudness is a poor signal here — mastered tracks stay flat or dip going into a drop — so it isn't used. The onset is rounded to a whole number of 4-bar phrases before the drop, and a BUILD that coincides with a BREAK is dropped as redundant.
+
+BUILD is the least validated of the three: on 10 test tracks its agreement with Rekordbox's pre-chorus "Up" phrase was 4/9 cues, so treat it as a suggestion and use the truth-file workflow below to check it on your own library. Without stems, BREAK and BUILD fall back to the older loudness-based detectors.
+
+Pass `--stem-cache DIR` to keep the vocal and drum stems (~50 MB per track) so re-analysing after a detector change skips the ~1x-realtime separation.
+
+On 10 electro/house/dance tracks, drum-stem drops landed on a Rekordbox phrase start 87% of the time versus 32% for the loudness detector, and on a Rekordbox chorus start 52% versus 23%. Rekordbox's chorus is a heuristic, not ground truth — use the truth-file workflow below for real accuracy.
+
+### Measuring accuracy
+
+```bash
+python main.py evaluate -n 30
+python main.py evaluate -n 10 --with-stems --stem-cache stems   # also scores drum-stem drops (slow the first time)
+```
+
+Samples tracks from your Rekordbox library and reports, for the old (own-grid) and new (Rekordbox-grid) pipelines: how many cues sit on a Rekordbox beat, on a bar start, and on/near a Rekordbox phrase boundary, plus how far Soundwave's own beat tracker is from Rekordbox's. These measure **grid and phrase alignment only** — they can't say the right section was found.
+
+For true accuracy, build a truth file once and re-run it after every detector change:
+
+```bash
+python main.py evaluate -n 20 --write-truth-template truth.json   # predicted cues for 20 tracks
+# edit truth.json: fix times, delete wrong cues, add missed ones
+python main.py evaluate --truth truth.json                         # hit rates @50ms / 250ms / 1 bar, misses, false positives
+```
+
+---
+
 ## Running tests
 
 ```bat
@@ -228,7 +272,11 @@ Tests use **synthetic audio only** (numpy-generated sine waves) — no real musi
 tests/
 ├── conftest.py             ← shared fixtures (synthetic audio signals)
 ├── test_analyzer.py        ← drop/build/breakdown/intro/dedup logic
+├── test_drum_drops.py      ← drum-stem drop detection (synthetic kick/riser signals)
+├── test_break_build.py     ← kick-structure breaks and high-band builds
+├── test_rekordbox_grid.py  ← Rekordbox-grid snapping, cue-placement metrics
 ├── test_xml_handler.py     ← XML generation, URI conversion, merge/roundtrip
+├── test_regressions.py     ← library/similarity/playlist/batch-analyze regressions
 └── test_server_security.py ← web app host/origin guards, audio-only file serving
 ```
 
@@ -246,9 +294,12 @@ pytest tests\ -v --cov=soundwave --cov-report=term-missing
 Soundwave/
 ├── soundwave/
 │   ├── analyzer.py          ← audio analysis (librosa + Demucs)
+│   ├── evaluate.py          ← cue-placement metrics (vs Rekordbox analysis / truth file)
+│   ├── eval_runner.py       ← runs the evaluation over tracks (`main.py evaluate`)
 │   ├── config.py            ← all tunable thresholds
 │   ├── library.py, lookup.py, lyrics.py, similarity.py
 │   ├── rekordbox/
+│   │   ├── anlz_grid.py     ← reads Rekordbox's own beat grid/phrases (read-only)
 │   │   ├── models.py        ← CuePoint, TrackAnalysis dataclasses
 │   │   └── xml_handler.py   ← Rekordbox XML read/write
 │   └── *.html / *.js / *.css, albums/   ← unrelated legacy Express demo site (see below)
