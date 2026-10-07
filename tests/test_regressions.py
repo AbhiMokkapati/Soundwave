@@ -211,3 +211,38 @@ class TestLocalOnlyMiddleware:
     def test_foreign_origin_is_rejected(self, server):
         resp = self._call(server, {"host": "127.0.0.1:8765", "origin": "https://evil.example"})
         assert resp.status_code == 403
+
+
+class TestNonGenreFolders:
+    def test_charts_years_and_playlists_are_not_genres(self):
+        for name in ("Billboard Hot 100 2025", "Top Hits", "Party Mix", "Pool Party", "2024", ""):
+            assert not lib._is_genre_name(name), name
+
+    def test_real_genres_still_pass(self):
+        for name in ("House", "Drum N Bass", "Dancehall", "Contemporary R B", "Dance-Pop"):
+            assert lib._is_genre_name(name), name
+
+
+class TestSortByGenreFlatRoot:
+    """Genre folders directly under the root: the root is the collection."""
+
+    def _tree(self, tmp_path):
+        for d in ("House", "Bollywood", "Billboard Hot 100 2025", "Indian Party", "Touse"):
+            (tmp_path / d).mkdir()
+        (tmp_path / "Billboard Hot 100 2025" / "Synth-Pop").mkdir()
+        return tmp_path
+
+    def test_billboard_is_not_the_routing_target(self, tmp_path, monkeypatch):
+        root = self._tree(tmp_path)
+        (root / "Touse" / "a.mp3").write_bytes(b"0")
+        monkeypatch.setattr(lib, "_read_easy_tags", lambda p: {"genre": ["House"]})
+        out = list(lib.sort_by_genre(root, dry_run=True))
+        assert any(l.startswith("MOVE") and l.replace("\\", "/").endswith("-> 'House/a.mp3'") for l in out)
+        assert not any("Billboard" in l for l in out if l.startswith(("MOVE", "CREATE")))
+
+    def test_untagged_indian_party_goes_to_bollywood(self, tmp_path, monkeypatch):
+        root = self._tree(tmp_path)
+        (root / "Indian Party" / "song.mp3").write_bytes(b"0")
+        monkeypatch.setattr(lib, "_read_easy_tags", lambda p: {})
+        out = list(lib.sort_by_genre(root, dry_run=True))
+        assert any(l.startswith("MOVE") and "Bollywood" in l for l in out)
