@@ -14,6 +14,7 @@
 
 <div id="splash">
   <div class="splash-deck">
+    <div class="splash-platter"></div>
     <svg class="splash-vinyl vinyl-svg" viewBox="0 0 100 100">
       <circle cx="50" cy="50" r="48" fill="#05070d" stroke="var(--border)" stroke-width="1"/>
       <circle cx="50" cy="50" r="42" fill="none" stroke="var(--groove)" stroke-width="6"/>
@@ -31,6 +32,7 @@
     </svg>
   </div>
   <div class="splash-word">SOUND<span>WAVE</span></div>
+  <div class="splash-meter" aria-hidden="true"><span></span></div>
   <div class="splash-hint">click the deck, or wait for the needle to drop</div>
 </div>
 
@@ -43,7 +45,7 @@
         <rect x="14" y="11" width="4" height="13" rx="1.5" fill="currentColor"/>
         <rect x="20.5" y="6" width="4" height="18" rx="1.5" fill="currentColor"/>
       </svg>
-      SOUND<span>WAVE</span>
+      <span class="wordmark-text">SOUND<em>WAVE</em></span>
     </div>
 
     <div class="nav-list">
@@ -86,7 +88,7 @@
     <section class="view active" id="view-home">
       <div class="view-header">
         <div>
-          <h1>Signal Chain</h1>
+          <h1>Prep Workflow</h1>
           <div class="view-subtitle">Your DJ-prep pipeline, start to export. Jump to any stage — Soundwave remembers where you left off.</div>
         </div>
         <div class="home-eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
