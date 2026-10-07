@@ -311,7 +311,10 @@ def _analysis_cache() -> dict:
 
 
 def _save_analysis_cache(cache: dict) -> None:
-    ANALYSIS_CACHE_PATH.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+    # Write-then-rename so an interrupted save can't leave a truncated cache.
+    tmp = ANALYSIS_CACHE_PATH.with_name(ANALYSIS_CACHE_PATH.name + ".tmp")
+    tmp.write_text(json.dumps(cache), encoding="utf-8")
+    tmp.replace(ANALYSIS_CACHE_PATH)
 
 
 def _analyze_one(p: Path, use_demucs: bool, recompute: bool, cache: dict,
@@ -408,6 +411,9 @@ def analyze_stream(
             base = seed_xml if i == 1 else output
             root = build_xml([analysis], base_xml_path=base)
             save_xml(root, output)
+            # Persist the cache per track: if the browser stream drops (e.g.
+            # the PC locks), a re-run resumes instead of re-analyzing everything.
+            _save_analysis_cache(cache)
             total_cues += len(payload["cues"])
 
             yield _sse({

@@ -189,7 +189,8 @@ def fill_missing_tags(
         existing_genre = (tags.get("genre") or [None])[0]
         if not existing_genre or not existing_genre.strip():
             parent = path.parent
-            if parent != root and parent.parent != root and parent.name:
+            if (parent != root and parent.parent != root and parent.name
+                    and _is_genre_name(parent.name)):
                 new_genre = parent.name.replace("_", " ").title()
                 if not dry_run:
                     tags["genre"] = new_genre
@@ -275,9 +276,38 @@ def clear_genre_from_folders(
 # 2. Sort into genre sub-folders
 # ---------------------------------------------------------------------------
 
+# Folder names that describe a chart, year, or playlist rather than a genre
+# (e.g. "Billboard Hot 100 2025", "Top Hits", "Party Mix", "Pool Party").
+_NON_GENRE_WORDS = {
+    "billboard", "hot", "top", "chart", "charts", "hits", "hit", "playlist",
+    "mix", "mixes", "mixtape", "party", "favorites", "favourites", "favs",
+    "new", "best", "classics", "bangers", "misc", "other", "unsorted",
+    "downloads", "download", "tracks", "songs", "music", "collection", "pool",
+    "unknown",
+}
+
+
+def _is_genre_name(name: str) -> bool:
+    """True if a folder/tag name plausibly names a genre, not a chart or playlist."""
+    if not name or not name.strip():
+        return False
+    if re.search(r"\d", name):  # years, "Top 100", "2025" are never genres
+        return False
+    words = set(_norm_genre(name).split())
+    return not (words & _NON_GENRE_WORDS)
+
+
 def _norm_genre(s: str) -> str:
     """Normalise a genre string for folder matching: lowercase, collapse separators."""
     return re.sub(r"[\-_/\\&\s]+", " ", s).strip().lower()
+
+
+def _folder_genre_hint(folder: str) -> str:
+    """Genre implied by a bucket folder's name, for files with no genre tag."""
+    low = folder.lower()
+    if any(w in low for w in ("indian", "bollywood", "desi")):
+        return "Bollywood"
+    return ""
 
 
 def sort_by_genre(
@@ -310,15 +340,25 @@ def sort_by_genre(
             _norm_genre(sd.name): sd
             for sd in d.iterdir()
             if sd.is_dir() and sd.name.lower() not in ignored_lower
+            and _is_genre_name(sd.name)
         }
 
-    # Primary collection = the one with the most genre sub-folders
+    # Layout detection. Nested layout: a collection folder holds several genre
+    # sub-folders (root/DJ Tracks/House). Flat layout: the genre folders sit
+    # directly under the root (root/House), so the root IS the collection.
+    structured = {c: f for c, f in collections.items() if len(f) >= 2}
     primary: Optional[Path] = None
-    if collections:
-        primary = max(collections, key=lambda c: len(collections[c]))
-
-    if primary:
+    root_targets: Dict[str, Path] = {}
+    if structured:
+        primary = max(structured, key=lambda c: len(structured[c]))
         yield f"Primary collection (genre target for flat folders): '{primary.name}'"
+    else:
+        root_targets = {
+            _norm_genre(d.name): d
+            for d in collections
+            if _is_genre_name(d.name)
+        }
+        yield f"Genre folders are directly under '{root.name}' ({len(root_targets)} found)"
 
     for path in _collect_audio(root, ignore=ignore):
         try:
@@ -335,12 +375,27 @@ def sort_by_genre(
         if tags is not None:
             genre_raw = (tags.get("genre") or [None])[0]
 
+        # A file already inside a genre folder with no usable tag just stays put.
+        in_genre_folder = (not structured
+                           and _norm_genre(collection.name) in root_targets)
+
         genre_name = (genre_raw or "").strip()
         if not genre_name:
-            continue  # no genre tag, silently skip
+            genre_name = _folder_genre_hint(collection.name)
+            if not genre_name:
+                if not in_genre_folder:
+                    yield f"SKIP (no genre tag): '{path.relative_to(root)}'"
+                continue
+        if not _is_genre_name(genre_name):
+            if not in_genre_folder:
+                yield f"SKIP (not a genre): '{path.relative_to(root)}' tagged '{genre_name}'"
+            continue
 
-        # Route flat-collection files to the primary collection
-        if is_flat and primary and primary != collection:
+        if not structured:
+            target_collection = root
+            target_folders = root_targets
+        elif is_flat and primary and primary != collection:
+            # Route flat-collection files to the primary collection
             target_collection = primary
             target_folders = collections[primary]
         else:
@@ -358,7 +413,7 @@ def sort_by_genre(
             if not dry_run:
                 genre_dir.mkdir(exist_ok=True)
             # Update the live cache so later files reuse it
-            collections[target_collection][norm] = genre_dir
+            target_folders[norm] = genre_dir
 
         dest = genre_dir / path.name
         if dest == path:
